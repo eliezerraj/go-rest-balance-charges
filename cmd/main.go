@@ -148,7 +148,6 @@ func main() {
 		break
 	}
 
-	
 	restapi	:= restapi.NewRestApi(serverUrlDomain, path)
 	httpAppServerConfig.Server = server
 	repoDB = db_postgre.NewWorkerRepository(dataBaseHelper)

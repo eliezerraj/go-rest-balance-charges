@@ -87,7 +87,7 @@ func (h *HttpWorkerAdapter) Add(rw http.ResponseWriter, req *http.Request) {
         return
     }
 	
-	res, err := h.workerService.Add(balanceCharge)
+	res, err := h.workerService.AddCtx(balanceCharge)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(rw).Encode(err.Error())

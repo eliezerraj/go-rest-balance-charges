@@ -20,6 +20,11 @@ CRUD a balance_charge data
 
 + POST /add
 
+        curl --header "Content-Type: application/json" \
+        --request POST \
+        --data '{"account_id": "ACC-001","type_charge": "CRED", "currency": "BRL", "amount": 150.00, "tenant_id": "TENANT-001"}' \
+        http://svc02.domain.com/add
+
         {
             "account_id": "ACC-001",
             "type_charge": "DEBITO",
@@ -30,6 +35,20 @@ CRUD a balance_charge data
 
 + GET /get/1
 
+        curl svc02.domain.com/get/1 | jq
+
 + GET /header
 
-+ GET /list/26
+        curl svc02.domain.com/header | jq
+
++ GET /list/ACC-001
+
+        curl svc02.domain.com/list/ACC-001 | jq
+
+
+Add in hosts file /etc/hosts the lines below
+
+    127.0.0.1   svc02.domain.com
+
+
+
