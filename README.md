@@ -1,8 +1,8 @@
 # go-rest-balance-charges
 
-POC for encryption purposes.
+POC for test purposes.
 
-CRUD a balance_charge data
+CRUD a balance_charge data. The ADD endpoint must be integrated with the service balance
 
 ## Database
 

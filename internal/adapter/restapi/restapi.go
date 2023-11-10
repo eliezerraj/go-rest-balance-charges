@@ -6,9 +6,11 @@ import(
 	"time"
 	"encoding/json"
 	"bytes"
+	"context"
 
 	"github.com/rs/zerolog/log"
 	"github.com/go-rest-balance-charges/internal/erro"
+	"github.com/aws/aws-xray-sdk-go/xray"
 )
 
 var childLogger = log.With().Str("adapter/restapi", "restapi").Logger()
@@ -26,14 +28,14 @@ func NewRestApi(serverUrlDomain string, path string) (*RestApiSConfig){
 	}
 }
 
-func (r *RestApiSConfig) GetData(id string) (interface{}, error) {
+func (r *RestApiSConfig) GetData(ctx context.Context, id string) (interface{}, error) {
 	childLogger.Debug().Msg("GetData")
 
 	domain := r.serverUrlDomain + r.path +"/" + id
 
 	childLogger.Debug().Str("domain : ", domain).Msg("GetData")
 
-	data_interface, err := makeGet(domain, id)
+	data_interface, err := makeGet(ctx, domain, id)
 	if err != nil {
 		childLogger.Error().Err(err).Msg("error Request")
 		return nil, errors.New(err.Error())
@@ -42,14 +44,14 @@ func (r *RestApiSConfig) GetData(id string) (interface{}, error) {
 	return data_interface, nil
 }
 
-func (r *RestApiSConfig) PostData(id string, data interface{}) (interface{}, error) {
+func (r *RestApiSConfig) PostData(ctx context.Context, id string, data interface{}) (interface{}, error) {
 	childLogger.Debug().Msg("PostData")
 
 	domain := r.serverUrlDomain + "/update" +"/" + id
 
 	childLogger.Debug().Str("domain : ", domain).Msg("PostData")
 
-	data_interface, err := makePost(domain, id ,data)
+	data_interface, err := makePost(ctx, domain, id ,data)
 	if err != nil {
 		childLogger.Error().Err(err).Msg("error Request")
 		return nil, errors.New(err.Error())
@@ -58,10 +60,10 @@ func (r *RestApiSConfig) PostData(id string, data interface{}) (interface{}, err
 	return data_interface, nil
 }
 
-func makeGet(url string, id interface{}) (interface{}, error) {
+func makeGet(ctx context.Context, url string, id interface{}) (interface{}, error) {
 	childLogger.Debug().Msg("makeGet")
 
-	client := &http.Client{Timeout: time.Second * 29}
+	client := xray.Client(&http.Client{Timeout: time.Second * 29})
 	
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -71,7 +73,7 @@ func makeGet(url string, id interface{}) (interface{}, error) {
 
 	req.Header.Add("Content-Type", "application/json;charset=UTF-8");
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
 		childLogger.Error().Err(err).Msg("error Do Request")
 		return false, errors.New(err.Error())
@@ -102,10 +104,10 @@ func makeGet(url string, id interface{}) (interface{}, error) {
 	return result, nil
 }
 
-func makePost(url string, inter interface{}, data interface{}) (interface{}, error) {
+func makePost(ctx context.Context, url string, inter interface{}, data interface{}) (interface{}, error) {
 	childLogger.Debug().Msg("makePost")
 
-	client := &http.Client{Timeout: time.Second * 29}
+	client := xray.Client(&http.Client{Timeout: time.Second * 29})
 	
 	payload := new(bytes.Buffer)
 	json.NewEncoder(payload).Encode(data)
@@ -118,7 +120,7 @@ func makePost(url string, inter interface{}, data interface{}) (interface{}, err
 
 	req.Header.Add("Content-Type", "application/json;charset=UTF-8");
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req.WithContext(ctx))
 	if err != nil {
 		childLogger.Error().Err(err).Msg("error Do Request")
 		return false, errors.New(err.Error())

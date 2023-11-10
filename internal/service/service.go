@@ -3,13 +3,13 @@ package service
 import (
 	"errors"
 	"context"
-	"time"
 	"github.com/rs/zerolog/log"
 	"github.com/mitchellh/mapstructure"
 
 	"github.com/go-rest-balance-charges/internal/core"
 	"github.com/go-rest-balance-charges/internal/repository/postgre"
 	"github.com/go-rest-balance-charges/internal/adapter/restapi"
+	"github.com/aws/aws-xray-sdk-go/xray"
 
 )
 
@@ -29,10 +29,13 @@ func NewWorkerService(workerRepository *db_postgre.WorkerRepository, restapi *re
 	}
 }
 
-func (s WorkerService) Add(balanceCharge core.BalanceCharge) (*core.BalanceCharge, error){
+func (s WorkerService) Add(ctx context.Context, balanceCharge core.BalanceCharge) (*core.BalanceCharge, error){
 	childLogger.Debug().Msg("Add")
 
-	rest_interface_data, err := s.restapi.GetData(balanceCharge.AccountID)
+	_, root := xray.BeginSubsegment(ctx, "Service.Add")
+	defer root.Close(nil)
+
+	rest_interface_data, err := s.restapi.GetData(ctx, balanceCharge.AccountID)
 	if err != nil {
 		return nil, err
 	}
@@ -47,7 +50,7 @@ func (s WorkerService) Add(balanceCharge core.BalanceCharge) (*core.BalanceCharg
 	childLogger.Debug().Interface("balance_parsed:",balance_parsed).Msg("")
 
 	balanceCharge.FkBalanceID = balance_parsed.ID
-	res, err := s.workerRepository.Add(balanceCharge)
+	res, err := s.workerRepository.Add(ctx, balanceCharge)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +58,7 @@ func (s WorkerService) Add(balanceCharge core.BalanceCharge) (*core.BalanceCharg
 	balance_parsed.Amount = balance_parsed.Amount + balanceCharge.Amount
 	childLogger.Debug().Interface("balance_parsed:",balance_parsed).Msg("")
 
-	_, err = s.restapi.PostData(balanceCharge.AccountID, balance_parsed)
+	_, err = s.restapi.PostData(ctx, balanceCharge.AccountID, balance_parsed)
 	if err != nil {
 		return nil, err
 	}
@@ -63,10 +66,13 @@ func (s WorkerService) Add(balanceCharge core.BalanceCharge) (*core.BalanceCharg
 	return res, nil
 }
 
-func (s WorkerService) Get(balanceCharge core.BalanceCharge) (*core.BalanceCharge, error){
+func (s WorkerService) Get(ctx context.Context, balanceCharge core.BalanceCharge) (*core.BalanceCharge, error){
 	childLogger.Debug().Msg("Get")
 
-	res, err := s.workerRepository.Get(balanceCharge)
+	_, root := xray.BeginSubsegment(ctx, "Service.Get")
+	defer root.Close(nil)
+
+	res, err := s.workerRepository.Get(ctx,balanceCharge)
 	if err != nil {
 		return nil, err
 	}
@@ -74,10 +80,13 @@ func (s WorkerService) Get(balanceCharge core.BalanceCharge) (*core.BalanceCharg
 	return res, nil
 }
 
-func (s WorkerService) List(balanceCharge core.BalanceCharge) (*[]core.BalanceCharge, error){
+func (s WorkerService) List(ctx context.Context, balanceCharge core.BalanceCharge) (*[]core.BalanceCharge, error){
 	childLogger.Debug().Msg("List")
 
-	rest_interface_data, err := s.restapi.GetData(balanceCharge.AccountID)
+	_, root := xray.BeginSubsegment(ctx, "Service.List")
+	defer root.Close(nil)
+
+	rest_interface_data, err := s.restapi.GetData(ctx, balanceCharge.AccountID)
 	if err != nil {
 		return nil, err
 	}
@@ -90,7 +99,7 @@ func (s WorkerService) List(balanceCharge core.BalanceCharge) (*[]core.BalanceCh
     }
 
 	balanceCharge.FkBalanceID = balance_parsed.ID
-	res, err := s.workerRepository.List(balanceCharge)
+	res, err := s.workerRepository.List(ctx,balanceCharge)
 	if err != nil {
 		return nil, err
 	}
@@ -98,11 +107,11 @@ func (s WorkerService) List(balanceCharge core.BalanceCharge) (*[]core.BalanceCh
 	return res, nil
 }
 
-func (s WorkerService) AddCtx(balanceCharge core.BalanceCharge) (*core.BalanceCharge, error){
+func (s WorkerService) AddCtx(ctx context.Context, balanceCharge core.BalanceCharge) (*core.BalanceCharge, error){
 	childLogger.Debug().Msg("AddCtx")
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30 * time.Second)
-	defer cancel()
+	_, root := xray.BeginSubsegment(ctx, "Service.AddCtx")
+	defer root.Close(nil)
 
 	tx, err := s.workerRepository.StartTx(ctx)
 	if err != nil {
@@ -110,7 +119,7 @@ func (s WorkerService) AddCtx(balanceCharge core.BalanceCharge) (*core.BalanceCh
 	}
 	defer tx.Rollback()
 
-	rest_interface_data, err := s.restapi.GetData(balanceCharge.AccountID)
+	rest_interface_data, err := s.restapi.GetData(ctx, balanceCharge.AccountID)
 	if err != nil {
 		return nil, err
 	}
@@ -125,7 +134,7 @@ func (s WorkerService) AddCtx(balanceCharge core.BalanceCharge) (*core.BalanceCh
 	childLogger.Debug().Interface("balance_parsed:",balance_parsed).Msg("")
 
 	balanceCharge.FkBalanceID = balance_parsed.ID
-	res, err := s.workerRepository.AddCtx(tx, balanceCharge)
+	res, err := s.workerRepository.AddCtx(ctx, tx, balanceCharge)
 	if err != nil {
 		return nil, err
 	}
@@ -133,7 +142,7 @@ func (s WorkerService) AddCtx(balanceCharge core.BalanceCharge) (*core.BalanceCh
 	balance_parsed.Amount = balance_parsed.Amount + balanceCharge.Amount
 	childLogger.Debug().Interface("balance_parsed:",balance_parsed).Msg("")
 
-	_, err = s.restapi.PostData(balanceCharge.AccountID, balance_parsed)
+	_, err = s.restapi.PostData(ctx, balanceCharge.AccountID, balance_parsed)
 	if err != nil {
 		return nil, err
 	}

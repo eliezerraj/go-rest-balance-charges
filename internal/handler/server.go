@@ -13,6 +13,7 @@ import (
 	"github.com/gorilla/mux"
 
 	"github.com/go-rest-balance-charges/internal/core"
+	"github.com/aws/aws-xray-sdk-go/xray"
 
 )
 
@@ -21,7 +22,7 @@ type HttpServer struct {
 	httpAppServer 	core.HttpAppServer
 }
 
-func NewHttpAppServer(httpAppServer core.HttpAppServer) HttpServer {
+func NewHttpAppServer( httpAppServer core.HttpAppServer) HttpServer {
 	childLogger.Debug().Msg("NewHttpAppServer")
 
 	return HttpServer{	start: time.Now(), 
@@ -29,7 +30,7 @@ func NewHttpAppServer(httpAppServer core.HttpAppServer) HttpServer {
 					}
 }
 
-func (h HttpServer) StartHttpAppServer(httpWorkerAdapter *HttpWorkerAdapter) {
+func (h HttpServer) StartHttpAppServer(ctx context.Context, httpWorkerAdapter *HttpWorkerAdapter) {
 	childLogger.Info().Msg("StartHttpAppServer")
 
 	myRouter := mux.NewRouter().StrictSlash(true)
@@ -47,7 +48,7 @@ func (h HttpServer) StartHttpAppServer(httpWorkerAdapter *HttpWorkerAdapter) {
 	health.Use(MiddleWareHandlerHeader)
 
 	live := myRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
-    live.HandleFunc("/live", httpWorkerAdapter.Health)
+    live.HandleFunc("/live", httpWorkerAdapter.Live)
 	live.Use(MiddleWareHandlerHeader)
 
 	header := myRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
@@ -55,15 +56,30 @@ func (h HttpServer) StartHttpAppServer(httpWorkerAdapter *HttpWorkerAdapter) {
 	header.Use(MiddleWareHandlerHeader)
 
 	addBalance := myRouter.Methods(http.MethodPost, http.MethodOptions).Subrouter()
-    addBalance.HandleFunc("/add", httpWorkerAdapter.Add)
+    //addBalance.HandleFunc("/add", httpWorkerAdapter.Add)
+	addBalance.Handle("/add", 
+		xray.Handler(xray.NewFixedSegmentNamer("go-rest-balance-charges.add"), 
+		http.HandlerFunc(httpWorkerAdapter.Add),
+		),
+	)
 	addBalance.Use(MiddleWareHandlerHeader)
 
 	getBalance := myRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
-    getBalance.HandleFunc("/get/{id}", httpWorkerAdapter.Get)
+    //getBalance.HandleFunc("/get/{id}", httpWorkerAdapter.Get)
+	getBalance.Handle("/get/{id}", 
+		xray.Handler(xray.NewFixedSegmentNamer("go-rest-balance-charges.getId"), 
+		http.HandlerFunc(httpWorkerAdapter.Get),
+		),
+	)
 	getBalance.Use(MiddleWareHandlerHeader)
 
 	listBalance := myRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
-    listBalance.HandleFunc("/list/{id}", httpWorkerAdapter.List)
+    //listBalance.HandleFunc("/list/{id}", httpWorkerAdapter.List)
+	listBalance.Handle("/list/{id}", 
+		xray.Handler(xray.NewFixedSegmentNamer("go-rest-balance-charges.listId"), 
+		http.HandlerFunc(httpWorkerAdapter.List),
+		),
+	)
 	listBalance.Use(MiddleWareHandlerHeader)
 
 	srv := http.Server{

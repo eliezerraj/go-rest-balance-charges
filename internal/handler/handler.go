@@ -87,7 +87,7 @@ func (h *HttpWorkerAdapter) Add(rw http.ResponseWriter, req *http.Request) {
         return
     }
 	
-	res, err := h.workerService.AddCtx(balanceCharge)
+	res, err := h.workerService.AddCtx(req.Context(), balanceCharge)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(rw).Encode(err.Error())
@@ -112,7 +112,7 @@ func (h *HttpWorkerAdapter) Get(rw http.ResponseWriter, req *http.Request) {
 	balanceCharge := core.BalanceCharge{}
 	balanceCharge.ID = varID
 	
-	res, err := h.workerService.Get(balanceCharge)
+	res, err := h.workerService.Get(req.Context(), balanceCharge)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(rw).Encode(err.Error())
@@ -132,7 +132,7 @@ func (h *HttpWorkerAdapter) List(rw http.ResponseWriter, req *http.Request) {
 	balanceCharge := core.BalanceCharge{}
 	balanceCharge.AccountID = varID
 	
-	res, err := h.workerService.List(balanceCharge)
+	res, err := h.workerService.List(req.Context(), balanceCharge)
 	if err != nil {
 		rw.WriteHeader(http.StatusBadRequest)
 		json.NewEncoder(rw).Encode(err.Error())

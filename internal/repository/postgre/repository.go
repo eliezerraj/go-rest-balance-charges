@@ -7,11 +7,15 @@ import (
 	"database/sql"
 
 	_ "github.com/lib/pq"
+	"github.com/rs/zerolog/log"
 
 	"github.com/go-rest-balance-charges/internal/core"
 	"github.com/go-rest-balance-charges/internal/erro"
+	"github.com/aws/aws-xray-sdk-go/xray"
 
 )
+
+var childLogger = log.With().Str("repository/postgre", "WorkerRepository").Logger()
 
 type WorkerRepository struct {
 	databaseHelper DatabaseHelper
@@ -51,8 +55,11 @@ func (w WorkerRepository) Ping() (bool, error) {
 	return true, nil
 }
 
-func (w WorkerRepository) Add(balanceCharge core.BalanceCharge) (*core.BalanceCharge, error){
+func (w WorkerRepository) Add(ctx context.Context, balanceCharge core.BalanceCharge) (*core.BalanceCharge, error){
 	childLogger.Debug().Msg("Add")
+
+	_, root := xray.BeginSubsegment(ctx, "SQL.ADD-Balance-Charges")
+	defer root.Close(nil)
 
 	client := w.databaseHelper.GetConnection()
 
@@ -67,12 +74,13 @@ func (w WorkerRepository) Add(balanceCharge core.BalanceCharge) (*core.BalanceCh
 		childLogger.Error().Err(err).Msg("INSERT statement")
 		return nil, errors.New(err.Error())
 	}
-	_, err = stmt.Exec(	balanceCharge.FkBalanceID, 
-						balanceCharge.Type,
-						time.Now(),
-						balanceCharge.Currency,
-						balanceCharge.Amount,
-						balanceCharge.TenantID)
+	_, err = stmt.ExecContext( ctx,
+								balanceCharge.FkBalanceID, 
+								balanceCharge.Type,
+								time.Now(),
+								balanceCharge.Currency,
+								balanceCharge.Amount,
+								balanceCharge.TenantID)
 	if err != nil {
 		childLogger.Error().Err(err).Msg("Exec statement")
 		return nil, errors.New(err.Error())
@@ -82,15 +90,16 @@ func (w WorkerRepository) Add(balanceCharge core.BalanceCharge) (*core.BalanceCh
 	return &balanceCharge , nil
 }
 
-func (w WorkerRepository) Get(balanceCharge core.BalanceCharge) (*core.BalanceCharge, error){
+func (w WorkerRepository) Get(ctx context.Context, balanceCharge core.BalanceCharge) (*core.BalanceCharge, error){
 	childLogger.Debug().Msg("Get")
+
+	_, root := xray.BeginSubsegment(ctx, "SQL.GET-Balance-Charges")
+	defer root.Close(nil)
 
 	client := w.databaseHelper.GetConnection()
 
 	result_query := core.BalanceCharge{}
-	rows, err := client.Query(`SELECT id, fk_balance_id, type_charge, charged_at, currency, amount, tenant_id
-								FROM balance_charge 
-								WHERE id =$1`, balanceCharge.ID)
+	rows, err := client.QueryContext(ctx, `SELECT id, fk_balance_id, type_charge, charged_at, currency, amount, tenant_id FROM balance_charge WHERE id =$1`, balanceCharge.ID)
 	if err != nil {
 		childLogger.Error().Err(err).Msg("Query statement")
 		return nil, errors.New(err.Error())
@@ -116,17 +125,18 @@ func (w WorkerRepository) Get(balanceCharge core.BalanceCharge) (*core.BalanceCh
 	return nil, erro.ErrNotFound
 }
 
-func (w WorkerRepository) List(balanceCharge core.BalanceCharge) (*[]core.BalanceCharge, error){
+func (w WorkerRepository) List(ctx context.Context, balanceCharge core.BalanceCharge) (*[]core.BalanceCharge, error){
 	childLogger.Debug().Msg("List")
+	
+	_, root := xray.BeginSubsegment(ctx, "SQL.List-Balance-Charges")
+	defer root.Close(nil)
 
 	client := w.databaseHelper.GetConnection()
 
 	result_query := core.BalanceCharge{}
 	balance_list := []core.BalanceCharge{}
 
-	rows, err := client.Query(`SELECT id, fk_balance_id, type_charge, charged_at, currency, amount, tenant_id
-								FROM balance_charge 
-								WHERE fk_balance_id =$1 order by charged_at desc`, balanceCharge.FkBalanceID)
+	rows, err := client.QueryContext(ctx, `SELECT id, fk_balance_id, type_charge, charged_at, currency, amount, tenant_id FROM balance_charge WHERE fk_balance_id =$1 order by charged_at desc`, balanceCharge.FkBalanceID)
 	if err != nil {
 		childLogger.Error().Err(err).Msg("SELECT statement")
 		return nil, errors.New(err.Error())
@@ -152,8 +162,11 @@ func (w WorkerRepository) List(balanceCharge core.BalanceCharge) (*[]core.Balanc
 	return &balance_list , nil
 }
 
-func (w WorkerRepository) AddCtx(tx *sql.Tx, balanceCharge core.BalanceCharge) (*core.BalanceCharge, error){
+func (w WorkerRepository) AddCtx(ctx context.Context, tx *sql.Tx, balanceCharge core.BalanceCharge) (*core.BalanceCharge, error){
 	childLogger.Debug().Msg("AddCtx")
+
+	_, root := xray.BeginSubsegment(ctx, "AddCtx.List-Balance-Charges")
+	defer root.Close(nil)
 
 	stmt, err := tx.Prepare(`INSERT INTO balance_charge ( 	fk_balance_id, 
 																type_charge,
@@ -168,12 +181,13 @@ func (w WorkerRepository) AddCtx(tx *sql.Tx, balanceCharge core.BalanceCharge) (
 	}
 	defer stmt.Close()
 
-	_, err = stmt.Exec(	balanceCharge.FkBalanceID, 
-						balanceCharge.Type,
-						time.Now(),
-						balanceCharge.Currency,
-						balanceCharge.Amount,
-						balanceCharge.TenantID)
+	_, err = stmt.ExecContext(	ctx,
+								balanceCharge.FkBalanceID, 
+								balanceCharge.Type,
+								time.Now(),
+								balanceCharge.Currency,
+								balanceCharge.Amount,
+								balanceCharge.TenantID)
 	if err != nil {
 		childLogger.Error().Err(err).Msg("Exec statement")
 		return nil, errors.New(err.Error())

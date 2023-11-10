@@ -6,6 +6,7 @@ import(
 	"strconv"
 	"net"
 	"io/ioutil"
+	"context"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -130,10 +131,13 @@ func main() {
 	log.Debug().Interface("",server).Msg("server")
 	log.Debug().Msg("--------")
 
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration( server.ReadTimeout ) * time.Second)
+	defer cancel()
+
 	count := 1
 	var err error
 	for {
-		dataBaseHelper, err = db_postgre.NewDatabaseHelper(envDB)
+		dataBaseHelper, err = db_postgre.NewDatabaseHelper(ctx, envDB)
 		if err != nil {
 			if count < 3 {
 				log.Error().Err(err).Msg("Erro na abertura do Database")
@@ -157,5 +161,5 @@ func main() {
 	httpAppServerConfig.InfoPod = &infoPod
 	httpServer := handler.NewHttpAppServer(httpAppServerConfig)
 
-	httpServer.StartHttpAppServer(httpWorkerAdapter)
+	httpServer.StartHttpAppServer(ctx, httpWorkerAdapter)
 }
