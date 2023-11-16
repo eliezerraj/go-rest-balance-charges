@@ -22,10 +22,11 @@ type HttpAppServer struct {
 }
 
 type InfoPod struct {
-	PodName			string `json:"pod_name"`
-	ApiVersion		string `json:"version"`
-	OSPID			string `json:"os_pid"`
-	IPAddress		string `json:"ip_address"`
+	PodName				string `json:"pod_name"`
+	ApiVersion			string `json:"version"`
+	OSPID				string `json:"os_pid"`
+	IPAddress			string `json:"ip_address"`
+	AvailabilityZone 	string `json:"availabilityZone"`
 }
 
 type Server struct {

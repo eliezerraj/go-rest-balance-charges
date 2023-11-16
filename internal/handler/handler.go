@@ -89,9 +89,12 @@ func (h *HttpWorkerAdapter) Add(rw http.ResponseWriter, req *http.Request) {
 	
 	res, err := h.workerService.AddCtx(req.Context(), balanceCharge)
 	if err != nil {
-		rw.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(rw).Encode(err.Error())
-		return
+		switch err {
+		default:
+			rw.WriteHeader(500)
+			json.NewEncoder(rw).Encode(err.Error())
+			return
+		}
 	}
 
 	json.NewEncoder(rw).Encode(res)
@@ -114,9 +117,16 @@ func (h *HttpWorkerAdapter) Get(rw http.ResponseWriter, req *http.Request) {
 	
 	res, err := h.workerService.Get(req.Context(), balanceCharge)
 	if err != nil {
-		rw.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(rw).Encode(err.Error())
-		return
+		switch err {
+		case erro.ErrNotFound:
+			rw.WriteHeader(404)
+			json.NewEncoder(rw).Encode(err.Error())
+			return
+		default:
+			rw.WriteHeader(500)
+			json.NewEncoder(rw).Encode(err.Error())
+			return
+		}
 	}
 
 	json.NewEncoder(rw).Encode(res)
@@ -134,9 +144,48 @@ func (h *HttpWorkerAdapter) List(rw http.ResponseWriter, req *http.Request) {
 	
 	res, err := h.workerService.List(req.Context(), balanceCharge)
 	if err != nil {
+		switch err {
+		default:
+			rw.WriteHeader(500)
+			json.NewEncoder(rw).Encode(err.Error())
+			return
+		}
+	}
+
+	json.NewEncoder(rw).Encode(res)
+	return
+}
+
+func (h *HttpWorkerAdapter) GetCb(rw http.ResponseWriter, req *http.Request) {
+	childLogger.Debug().Msg("GetCb")
+
+	vars := mux.Vars(req)
+	varID, err := strconv.Atoi(vars["id"])
+	if err != nil{
 		rw.WriteHeader(http.StatusBadRequest)
-		json.NewEncoder(rw).Encode(err.Error())
+		json.NewEncoder(rw).Encode(erro.ErrConvertion.Error())
 		return
+	}
+
+	balanceCharge := core.BalanceCharge{}
+	balanceCharge.ID = varID
+	
+	res, err := h.workerService.GetCb(req.Context(), balanceCharge)
+	if err != nil {
+		switch err {
+		case erro.ErrPending:
+			rw.WriteHeader(200)
+			json.NewEncoder(rw).Encode(err.Error())
+			return
+		case erro.ErrNotFound:
+			rw.WriteHeader(404)
+			json.NewEncoder(rw).Encode(err.Error())
+			return
+		default:
+			rw.WriteHeader(500)
+			json.NewEncoder(rw).Encode(err.Error())
+			return
+		}
 	}
 
 	json.NewEncoder(rw).Encode(res)

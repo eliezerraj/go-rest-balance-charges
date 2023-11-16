@@ -75,7 +75,7 @@ spec:
               - /bin/sh
               - -c
               - "ps -A | grep go-rest-balance-charges | grep -v grep"
-            initialDelaySeconds: 5
+            initialDelaySeconds: 3
             periodSeconds: 30
             failureThreshold: 3
             successThreshold: 1

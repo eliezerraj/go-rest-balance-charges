@@ -65,7 +65,7 @@ Resources:
           arn:aws:iam::${AWS::AccountId}:oidc-provider/oidc.eks.${AWS::Region}.amazonaws.com/id/${eksId}\"\
           \n      },\n      \"Action\": \"sts:AssumeRoleWithWebIdentity\",\n     \
           \ \"Condition\": {\n        \"StringEquals\": {\n          \"${eksEndpoint}:sub\"\
-          : \"system:serviceaccount:K8Namespace${Env}:${ServiceAccountName}\"\n\
+          : \"system:serviceaccount:${K8Namespace}:${ServiceAccountName}\"\n\
           \        }\n      }\n    }\n  ]\n}\n"
         - eksId:
             Fn::Select:

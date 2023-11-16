@@ -11,6 +11,10 @@ import(
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
+	"github.com/aws/aws-sdk-go-v2/feature/ec2/imds"
+    "github.com/aws/aws-sdk-go-v2/config"
+
+	"github.com/go-rest-balance-charges/internal/circuitbreaker"
 	"github.com/go-rest-balance-charges/internal/handler"
 	"github.com/go-rest-balance-charges/internal/core"
 	"github.com/go-rest-balance-charges/internal/service"
@@ -24,7 +28,8 @@ var(
 	tableName 	= "BALANCE_CHARGE"
 	version 	= "GO CRUD BALANCE_CHARGE 1.0"
 	serverUrlDomain	string
-	path	string
+	path			string
+	noAZ		=	true // set only if you get to split the xray trace per AZ
 
 	infoPod					core.InfoPod
 	envDB	 				core.DatabaseRDS
@@ -86,6 +91,24 @@ func init(){
 	envDB.Password = string(file_pass)
 
 	getEnv()
+
+	// Get AZ only if localtest is true
+	if (noAZ != true) {
+		cfg, err := config.LoadDefaultConfig(context.TODO())
+		if err != nil {
+			log.Error().Err(err).Msg("ERRO FATAL get Context !!!")
+			os.Exit(3)
+		}
+		client := imds.NewFromConfig(cfg)
+		response, err := client.GetInstanceIdentityDocument(context.TODO(), &imds.GetInstanceIdentityDocumentInput{})
+		if err != nil {
+			log.Error().Err(err).Msg("Unable to retrieve the region from the EC2 instance !!!")
+			os.Exit(3)
+		}
+		infoPod.AvailabilityZone = response.AvailabilityZone	
+	} else {
+			infoPod.AvailabilityZone = "LOCALHOSTO_NO_AZ"
+	}
 }
 
 func getEnv() {
@@ -122,6 +145,10 @@ func getEnv() {
 	if os.Getenv("SERVER_PATH") !=  "" {	
 		path = os.Getenv("SERVER_PATH")
 	}
+
+	if os.Getenv("NO_AZ") ==  "true" {	
+		noAZ = false
+	}
 }
 
 func main() {
@@ -152,10 +179,11 @@ func main() {
 		break
 	}
 
+	circuitBreaker := circuitbreaker.CircuitBreakerConfig()
 	restapi	:= restapi.NewRestApi(serverUrlDomain, path)
 	httpAppServerConfig.Server = server
 	repoDB = db_postgre.NewWorkerRepository(dataBaseHelper)
-	workerService := service.NewWorkerService(&repoDB, restapi)
+	workerService := service.NewWorkerService(&repoDB, restapi, circuitBreaker)
 	httpWorkerAdapter := handler.NewHttpWorkerAdapter(workerService)
 
 	httpAppServerConfig.InfoPod = &infoPod

@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 	"context"
+	"fmt"
 
 	"github.com/gorilla/mux"
 
@@ -42,14 +43,13 @@ func (h HttpServer) StartHttpAppServer(ctx context.Context, httpWorkerAdapter *H
 	myRouter.HandleFunc("/info", func(rw http.ResponseWriter, req *http.Request) {
 		json.NewEncoder(rw).Encode(h.httpAppServer)
 	})
+	myRouter.Use(MiddleWareHandlerHeader)
 
 	health := myRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
     health.HandleFunc("/health", httpWorkerAdapter.Health)
-	health.Use(MiddleWareHandlerHeader)
 
 	live := myRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
     live.HandleFunc("/live", httpWorkerAdapter.Live)
-	live.Use(MiddleWareHandlerHeader)
 
 	header := myRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
     header.HandleFunc("/header", httpWorkerAdapter.Header)
@@ -57,8 +57,9 @@ func (h HttpServer) StartHttpAppServer(ctx context.Context, httpWorkerAdapter *H
 
 	addBalance := myRouter.Methods(http.MethodPost, http.MethodOptions).Subrouter()
     //addBalance.HandleFunc("/add", httpWorkerAdapter.Add)
-	addBalance.Handle("/add", 
-		xray.Handler(xray.NewFixedSegmentNamer("go-rest-balance-charges.add"), 
+	addBalance.Handle("/add",
+		xray.Handler(xray.NewFixedSegmentNamer(fmt.Sprintf("%s%s%s", "balance-charges:", h.httpAppServer.InfoPod.AvailabilityZone, ".add")),
+		//xray.Handler(xray.NewFixedSegmentNamer("go-rest-balance-charges.add"), 
 		http.HandlerFunc(httpWorkerAdapter.Add),
 		),
 	)
@@ -66,17 +67,29 @@ func (h HttpServer) StartHttpAppServer(ctx context.Context, httpWorkerAdapter *H
 
 	getBalance := myRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
     //getBalance.HandleFunc("/get/{id}", httpWorkerAdapter.Get)
-	getBalance.Handle("/get/{id}", 
-		xray.Handler(xray.NewFixedSegmentNamer("go-rest-balance-charges.getId"), 
+	getBalance.Handle("/get/{id}",
+		xray.Handler(xray.NewFixedSegmentNamer(fmt.Sprintf("%s%s%s", "balance-charges:", h.httpAppServer.InfoPod.AvailabilityZone, ".getId")),
+		//xray.Handler(xray.NewFixedSegmentNamer("go-rest-balance-charges.getId"), 
 		http.HandlerFunc(httpWorkerAdapter.Get),
 		),
 	)
 	getBalance.Use(MiddleWareHandlerHeader)
 
+	getBalanceCb := myRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
+    //getBalance.HandleFunc("/get/{id}", httpWorkerAdapter.Get)
+	getBalanceCb.Handle("/getCb/{id}",
+		xray.Handler(xray.NewFixedSegmentNamer(fmt.Sprintf("%s%s%s", "balance-charges:", h.httpAppServer.InfoPod.AvailabilityZone, ".getId")),
+		//xray.Handler(xray.NewFixedSegmentNamer("go-rest-balance-charges.getId"), 
+		http.HandlerFunc(httpWorkerAdapter.GetCb),
+		),
+	)
+	getBalanceCb.Use(MiddleWareHandlerHeader)
+
 	listBalance := myRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
     //listBalance.HandleFunc("/list/{id}", httpWorkerAdapter.List)
-	listBalance.Handle("/list/{id}", 
-		xray.Handler(xray.NewFixedSegmentNamer("go-rest-balance-charges.listId"), 
+	listBalance.Handle("/list/{id}",
+		xray.Handler(xray.NewFixedSegmentNamer(fmt.Sprintf("%s%s%s", "balance-charges:", h.httpAppServer.InfoPod.AvailabilityZone, ".listId")),
+		//xray.Handler(xray.NewFixedSegmentNamer("go-rest-balance-charges.listId"), 
 		http.HandlerFunc(httpWorkerAdapter.List),
 		),
 	)
