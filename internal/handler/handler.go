@@ -191,3 +191,59 @@ func (h *HttpWorkerAdapter) GetCb(rw http.ResponseWriter, req *http.Request) {
 	json.NewEncoder(rw).Encode(res)
 	return
 }
+
+func (h *HttpWorkerAdapter) WithdrawCbCtx(rw http.ResponseWriter, req *http.Request) {
+	childLogger.Debug().Msg("WithdrawCbCtx")
+
+	balanceCharge := core.BalanceCharge{}
+	err := json.NewDecoder(req.Body).Decode(&balanceCharge)
+    if err != nil {
+		rw.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(rw).Encode(erro.ErrUnmarshal.Error())
+        return
+    }
+	
+	res, err := h.workerService.WithdrawCbCtx(req.Context(), balanceCharge)
+	if err != nil {
+		switch err {
+		default:
+			rw.WriteHeader(500)
+			json.NewEncoder(rw).Encode(err.Error())
+			return
+		}
+	}
+
+	json.NewEncoder(rw).Encode(res)
+	return
+}
+
+func (h *HttpWorkerAdapter) GetCache(rw http.ResponseWriter, req *http.Request) {
+	childLogger.Debug().Msg("GetCache")
+
+	vars := mux.Vars(req)
+	balanceCharge := core.BalanceCharge{}
+	balanceCharge.AccountID = vars["id"]
+	
+	res, err := h.workerService.GetCache(req.Context(), balanceCharge)
+	if err != nil {
+		switch err {
+		case erro.ErrPending:
+			rw.WriteHeader(200)
+			json.NewEncoder(rw).Encode(err.Error())
+			return
+		case erro.ErrNotFound:
+			rw.WriteHeader(404)
+			json.NewEncoder(rw).Encode(err.Error())
+			return
+		default:
+			rw.WriteHeader(500)
+			json.NewEncoder(rw).Encode(err.Error())
+			return
+		}
+	}
+
+	json.NewEncoder(rw).Encode(res)
+	return
+	json.NewEncoder(rw).Encode(res)
+	return
+}

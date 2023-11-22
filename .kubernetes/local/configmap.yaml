@@ -14,3 +14,7 @@ data:
   DB_NAME: "postgres"
   DB_SCHEMA: "public"
   SERVER_URL_DOMAIN: "http://svc-go-rest-balance.test-a.svc.cluster.local:8900"
+  NO_AZ: "true"
+  REDIS_ADDRESS: "svc-redis.test-a.svc.cluster.local:6379"
+  REDIS_DB_NAME: "0"
+  REDIS_PASSWORD: ""

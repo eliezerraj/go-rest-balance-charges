@@ -9,6 +9,7 @@ import (
 var (
 	ErrPending			= errors.New("O requisição não pode ser processada nesse momento, tente depois !!!")
 	ErrHTTPForbiden		= errors.New("Sem permissão")
+	ErrNoFund			= errors.New("Saldo insuficiente para a transação")
 	ErrListNotAllowed 	= errors.New("Lista (SCAN) não permitida para o DynamoDB")
 	ErrList 			= errors.New("Erro na leitura (LIST)")
 	ErrSaveDatabase 	= errors.New("Erro no UPSERT")

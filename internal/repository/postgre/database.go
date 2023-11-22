@@ -6,7 +6,6 @@ import (
 	"database/sql"
 
 	_ "github.com/lib/pq"
-
 	"github.com/go-rest-balance-charges/internal/core"
 
 )

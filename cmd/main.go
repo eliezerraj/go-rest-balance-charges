@@ -19,7 +19,9 @@ import(
 	"github.com/go-rest-balance-charges/internal/core"
 	"github.com/go-rest-balance-charges/internal/service"
 	"github.com/go-rest-balance-charges/internal/repository/postgre"
+	"github.com/go-rest-balance-charges/internal/repository/cache"
 	"github.com/go-rest-balance-charges/internal/adapter/restapi"
+	redis "github.com/redis/go-redis/v9"
 	
 )
 
@@ -38,6 +40,9 @@ var(
 	dataBaseHelper 			db_postgre.DatabaseHelper
 	repoDB					db_postgre.WorkerRepository
 	restApiBalance			restapi.RestApiSConfig
+	cache					cache_redis.CacheService
+	envCache				redis.Options
+	
 )
 
 func init(){
@@ -56,6 +61,10 @@ func init(){
 	envDB.Db_timeout = 90
 	envDB.Postgres_Driver = "postgres"
 	server.Port = 5001
+
+	envCache.Addr = "127.0.0.1:6379"
+	envCache.Password = ""
+	envCache.DB	= 0
 	//Just for easy test
 
 	server.ReadTimeout = 60
@@ -146,9 +155,23 @@ func getEnv() {
 		path = os.Getenv("SERVER_PATH")
 	}
 
-	if os.Getenv("NO_AZ") ==  "true" {	
+	if os.Getenv("NO_AZ") == "false" {	
 		noAZ = false
+	} else {
+		noAZ = true
 	}
+
+	if os.Getenv("REDIS_ADDRESS") !=  "" {	
+		envCache.Addr = os.Getenv("REDIS_ADDRESS")
+	}
+	if os.Getenv("REDIS_DB_NAME") !=  "" {	
+		intVar, _ := strconv.Atoi(os.Getenv("REDIS_DB_NAME"))
+		envCache.DB = intVar
+	}
+	if os.Getenv("REDIS_PASSWORD") !=  "" {	
+		envCache.Password = os.Getenv("REDIS_PASSWORD")
+	}
+
 }
 
 func main() {
@@ -179,11 +202,17 @@ func main() {
 		break
 	}
 
+	cache := cache_redis.NewCache(ctx, &envCache)
+	_, err = cache.Ping(ctx)
+	if err != nil{
+		log.Error().Err(err).Msg("Erro na abertura do Redis")
+	}
+
 	circuitBreaker := circuitbreaker.CircuitBreakerConfig()
 	restapi	:= restapi.NewRestApi(serverUrlDomain, path)
 	httpAppServerConfig.Server = server
 	repoDB = db_postgre.NewWorkerRepository(dataBaseHelper)
-	workerService := service.NewWorkerService(&repoDB, restapi, circuitBreaker)
+	workerService := service.NewWorkerService(&repoDB, restapi, circuitBreaker, cache)
 	httpWorkerAdapter := handler.NewHttpWorkerAdapter(workerService)
 
 	httpAppServerConfig.InfoPod = &infoPod

@@ -95,6 +95,22 @@ func (h HttpServer) StartHttpAppServer(ctx context.Context, httpWorkerAdapter *H
 	)
 	listBalance.Use(MiddleWareHandlerHeader)
 
+	withdrawCbCtx := myRouter.Methods(http.MethodPost, http.MethodOptions).Subrouter()
+	withdrawCbCtx.Handle("/withdraw",
+		xray.Handler(xray.NewFixedSegmentNamer(fmt.Sprintf("%s%s%s", "balance-charges:", h.httpAppServer.InfoPod.AvailabilityZone, ".withdraw")),
+		http.HandlerFunc(httpWorkerAdapter.WithdrawCbCtx),
+		),
+	)
+	withdrawCbCtx.Use(MiddleWareHandlerHeader)
+
+	GetCache := myRouter.Methods(http.MethodGet, http.MethodOptions).Subrouter()
+	GetCache.Handle("/getCache/{id}",
+		xray.Handler(xray.NewFixedSegmentNamer(fmt.Sprintf("%s%s%s", "balance-charges:", h.httpAppServer.InfoPod.AvailabilityZone, ".GetCache")),
+		http.HandlerFunc(httpWorkerAdapter.GetCache),
+		),
+	)
+	GetCache.Use(MiddleWareHandlerHeader)
+
 	srv := http.Server{
 		Addr:         ":" +  strconv.Itoa(h.httpAppServer.Server.Port),      	
 		Handler:      myRouter,                	          
