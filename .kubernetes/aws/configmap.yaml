@@ -14,3 +14,8 @@ data:
   DB_NAME: "postgres"
   DB_SCHEMA: "public"
   SERVER_URL_DOMAIN: "http://svc-go-rest-balance.test-a.svc.cluster.local:8900"
+  NO_AZ: "true"
+  REDIS_ADDRESS: "redis-arch-vovqz2.serverless.use2.cache.amazonaws.com:6379"
+  REDIS_CLUSTER_ADDRESS: "clustercfg.memdb-arch.vovqz2.memorydb.us-east-2.amazonaws.com:6379"
+  REDIS_DB_NAME: "0"
+  REDIS_PASSWORD: ""

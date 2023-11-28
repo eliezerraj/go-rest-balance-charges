@@ -12,7 +12,8 @@ import (
 var childLogger = log.With().Str("repository/cache", "Redis").Logger()
 
 type CacheService struct {
-	cache *redis.Client
+	cache *redis.ClusterClient
+	cache_s *redis.Client
 }
 
 func NewCache(ctx context.Context, options *redis.Options) *CacheService {
@@ -20,6 +21,16 @@ func NewCache(ctx context.Context, options *redis.Options) *CacheService {
 	childLogger.Debug().Interface("option.Addr:", options.Addr).Msg("")
 
 	redisClient := redis.NewClient(options)
+	return &CacheService{
+		cache_s: redisClient,
+	}
+}
+
+func NewClusterCache(ctx context.Context, options *redis.ClusterOptions) *CacheService {
+	childLogger.Debug().Msg("NewClusterCache")
+	childLogger.Debug().Interface("option.Addrs: ", options.Addrs).Msg("")
+
+	redisClient := redis.NewClusterClient(options)
 	return &CacheService{
 		cache: redisClient,
 	}

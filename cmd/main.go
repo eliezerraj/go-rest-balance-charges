@@ -3,10 +3,12 @@ package main
 import(
 	"time"
 	"os"
+	"strings"
 	"strconv"
 	"net"
 	"io/ioutil"
 	"context"
+	"crypto/tls"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -41,8 +43,8 @@ var(
 	repoDB					db_postgre.WorkerRepository
 	restApiBalance			restapi.RestApiSConfig
 	cache					cache_redis.CacheService
+	envCacheCluster			redis.ClusterOptions
 	envCache				redis.Options
-	
 )
 
 func init(){
@@ -62,9 +64,16 @@ func init(){
 	envDB.Postgres_Driver = "postgres"
 	server.Port = 5001
 
-	envCache.Addr = "127.0.0.1:6379"
+	envCacheCluster.Addrs = strings.Split("127.0.0.1:6379", ",")
+
+	envCache.Username = ""
 	envCache.Password = ""
+	envCache.Addr = "127.0.0.1:6379"
 	envCache.DB	= 0
+
+	envCacheCluster.Username = ""
+	envCacheCluster.Password = ""
+
 	//Just for easy test
 
 	server.ReadTimeout = 60
@@ -116,7 +125,7 @@ func init(){
 		}
 		infoPod.AvailabilityZone = response.AvailabilityZone	
 	} else {
-			infoPod.AvailabilityZone = "LOCALHOSTO_NO_AZ"
+		infoPod.AvailabilityZone = "LOCALHOST_NO_AZ"
 	}
 }
 
@@ -162,7 +171,10 @@ func getEnv() {
 	}
 
 	if os.Getenv("REDIS_ADDRESS") !=  "" {	
-		envCache.Addr = os.Getenv("REDIS_ADDRESS")
+		envCache.Addr =  os.Getenv("REDIS_ADDRESS")
+	}
+	if os.Getenv("REDIS_CLUSTER_ADDRESS") !=  "" {	
+		envCacheCluster.Addrs =  strings.Split(os.Getenv("REDIS_CLUSTER_ADDRESS"), ",") 
 	}
 	if os.Getenv("REDIS_DB_NAME") !=  "" {	
 		intVar, _ := strconv.Atoi(os.Getenv("REDIS_DB_NAME"))
@@ -202,7 +214,17 @@ func main() {
 		break
 	}
 
-	cache := cache_redis.NewCache(ctx, &envCache)
+	if !strings.Contains(envCache.Addr, "127.0.0.1") {
+		envCache.TLSConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+		envCacheCluster.TLSConfig = &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+	}
+
+	cache := cache_redis.NewClusterCache(ctx, &envCacheCluster)
+	//cache := cache_redis.NewCache(ctx, &envCache)
 	_, err = cache.Ping(ctx)
 	if err != nil{
 		log.Error().Err(err).Msg("Erro na abertura do Redis")
