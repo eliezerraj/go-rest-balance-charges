@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: &app-name redis-cm
+  namespace: test-a
+  labels:
+    app: *app-name
+data:
+  redis-config: ""
