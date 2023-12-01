@@ -13,7 +13,9 @@ func (s WorkerService) GetCache(ctx context.Context, balanceCharge core.BalanceC
 	childLogger.Debug().Msg("GetCache")
 
 	_, root := xray.BeginSubsegment(ctx, "Service.GetCache")
-	defer root.Close(nil)
+	defer func() {
+		root.Close(nil)
+	}()
 
 	res, err := s.cache.Get(ctx, balanceCharge.AccountID)
 	if err != nil {

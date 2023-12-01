@@ -40,7 +40,9 @@ func (s *CacheService) Sum(ctx context.Context, key string, value interface{}) (
 	childLogger.Debug().Msg("Sum")
 
 	_, root := xray.BeginSubsegment(ctx, "REDIS.HIncrByFloat-Balance-Charges")
-	defer root.Close(nil)
+	defer func() {
+		root.Close(nil)
+	}()
 
 	_, err := s.cache.HIncrByFloat(ctx, "account:" + key, "amount", value.(float64)).Result()
 	if err != nil {
@@ -56,7 +58,9 @@ func (s *CacheService) Get(ctx context.Context, key string) (interface{}, error)
 	childLogger.Debug().Msg("Get")
 
 	_, root := xray.BeginSubsegment(ctx, "REDIS.HGet-Balance-Charges")
-	defer root.Close(nil)
+	defer func() {
+		root.Close(nil)
+	}()
 
 	res, err := s.cache.HGet(ctx, "account:"+ key, "amount").Result()
 	if err != nil {
@@ -72,7 +76,9 @@ func (s *CacheService) Put(ctx context.Context, key string, value interface{}) e
 	childLogger.Debug().Msg("Put")
 	
 	_, root := xray.BeginSubsegment(ctx, "REDIS.Set-Balance-Charges")
-	defer root.Close(nil)
+	defer func() {
+		root.Close(nil)
+	}()
 
 	status := s.cache.Set(ctx, "account:"+ key, value, time.Minute * 10)
 	return status.Err()

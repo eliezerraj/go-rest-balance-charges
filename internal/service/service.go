@@ -45,7 +45,9 @@ func (s WorkerService) Add(ctx context.Context, balanceCharge core.BalanceCharge
 	childLogger.Debug().Msg("Add")
 
 	_, root := xray.BeginSubsegment(ctx, "Service.Add")
-	defer root.Close(nil)
+	defer func() {
+		root.Close(nil)
+	}()
 
 	rest_interface_data, err := s.restapi.GetData(ctx, balanceCharge.AccountID)
 	if err != nil {
@@ -82,7 +84,9 @@ func (s WorkerService) Get(ctx context.Context, balanceCharge core.BalanceCharge
 	childLogger.Debug().Msg("Get")
 
 	_, root := xray.BeginSubsegment(ctx, "Service.Get")
-	defer root.Close(nil)
+	defer func() {
+		root.Close(nil)
+	}()
 
 	res, err := s.workerRepository.Get(ctx,balanceCharge)
 	if err != nil {
@@ -97,7 +101,9 @@ func (s WorkerService) GetCb(ctx context.Context, balanceCharge core.BalanceChar
 
 	// tracer
 	_, root := xray.BeginSubsegment(ctx, "Service.GetCb")
-	defer root.Close(nil)
+	defer func() {
+		root.Close(nil)
+	}()
 
 	// Business rule with CB
 	res_cb, err := s.circuitBreaker.Execute(func() (interface{}, error) {
@@ -134,7 +140,9 @@ func (s WorkerService) List(ctx context.Context, balanceCharge core.BalanceCharg
 	childLogger.Debug().Msg("List")
 
 	_, root := xray.BeginSubsegment(ctx, "Service.List")
-	defer root.Close(nil)
+	defer func() {
+		root.Close(nil)
+	}()
 
 	rest_interface_data, err := s.restapi.GetData(ctx, balanceCharge.AccountID)
 	if err != nil {
@@ -161,7 +169,6 @@ func (s WorkerService) AddCtx(ctx context.Context, balanceCharge core.BalanceCha
 	childLogger.Debug().Msg("AddCtx")
 
 	_, root := xray.BeginSubsegment(ctx, "Service.AddCtx")
-	defer root.Close(nil)
 
 	tx, err := s.workerRepository.StartTx(ctx)
 	if err != nil {
@@ -174,6 +181,7 @@ func (s WorkerService) AddCtx(ctx context.Context, balanceCharge core.BalanceCha
 		} else {
 			tx.Commit()
 		}
+		root.Close(nil)
 	}()
 
 	rest_interface_data, err := s.restapi.GetData(ctx, balanceCharge.AccountID)
@@ -211,7 +219,6 @@ func (s WorkerService) WithdrawCbCtx(ctx context.Context, balanceCharge core.Bal
 	childLogger.Debug().Msg("WithdrawCbCtx")
 
 	_, root := xray.BeginSubsegment(ctx, "Service.WithdrawCbCtx")
-	defer root.Close(nil)
 
 	tx, err := s.workerRepository.StartTx(ctx)
 	if err != nil {
@@ -224,11 +231,12 @@ func (s WorkerService) WithdrawCbCtx(ctx context.Context, balanceCharge core.Bal
 		} else {
 			tx.Commit()
 		}
-		// Decrease the amount
+		// Decrease the amount to Redis
 		err = s.cache.Sum(ctx, balanceCharge.AccountID, balanceCharge.Amount * -1)
 		if err != nil{
 			childLogger.Error().Err(err).Msg("Redis error decrease")
 		}
+		root.Close(nil)
 	}()
 
 	// Put request to the cache
@@ -266,15 +274,18 @@ func (s WorkerService) WithdrawCbCtx(ctx context.Context, balanceCharge core.Bal
 		return nil, erro.ErrNoFund
 	}
 
+	// Register a transaction
 	balanceCharge.FkBalanceID = balance_parsed.ID
 	res, err := s.workerRepository.AddCtx(ctx, tx, balanceCharge)
 	if err != nil {
 		return nil, err
 	}
 
+	// Sum the values
 	balance_parsed.Amount = balance_parsed.Amount + balanceCharge.Amount
 	childLogger.Debug().Interface("balance_parsed:",balance_parsed).Msg("")
 
+	//  Adjust the Account Balance (go-rest-balance)
 	_, err = s.restapi.PostData(ctx, balanceCharge.AccountID, balance_parsed)
 	if err != nil {
 		return nil, err

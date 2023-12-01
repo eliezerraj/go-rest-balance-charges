@@ -29,7 +29,6 @@ import(
 
 var(
 	logLevel 	= zerolog.DebugLevel
-	tableName 	= "BALANCE_CHARGE"
 	version 	= "GO CRUD BALANCE_CHARGE 1.0"
 	serverUrlDomain	string
 	path			string
@@ -64,16 +63,14 @@ func init(){
 	envDB.Postgres_Driver = "postgres"
 	server.Port = 5001
 
-	envCacheCluster.Addrs = strings.Split("127.0.0.1:6379", ",")
+	envCacheCluster.Username = ""
+	envCacheCluster.Password = ""
+	envCacheCluster.Addrs = strings.Split("clustercfg.memdb-arch.vovqz2.memorydb.us-east-2.amazonaws.com:6379", ",")
 
 	envCache.Username = ""
 	envCache.Password = ""
 	envCache.Addr = "127.0.0.1:6379"
 	envCache.DB	= 0
-
-	envCacheCluster.Username = ""
-	envCacheCluster.Password = ""
-
 	//Just for easy test
 
 	server.ReadTimeout = 60
@@ -218,11 +215,13 @@ func main() {
 		envCache.TLSConfig = &tls.Config{
 			MinVersion: tls.VersionTLS12,
 		}
+	}
+	if !strings.Contains(envCacheCluster.Addrs[0], "127.0.0.1") {
+		log.Debug().Msg("tls ok")
 		envCacheCluster.TLSConfig = &tls.Config{
 			MinVersion: tls.VersionTLS12,
 		}
 	}
-
 	cache := cache_redis.NewClusterCache(ctx, &envCacheCluster)
 	//cache := cache_redis.NewCache(ctx, &envCache)
 	_, err = cache.Ping(ctx)

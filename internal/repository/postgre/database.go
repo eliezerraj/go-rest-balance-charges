@@ -12,7 +12,6 @@ import (
 
 type DatabaseHelper interface {
 	GetConnection() (*sql.DB)
-	CloseConnection()
 }
 
 type DatabaseHelperImplementacion struct {
@@ -47,10 +46,4 @@ func (d DatabaseHelperImplementacion) GetConnection() (*sql.DB) {
 	childLogger.Debug().Msg("GetConnection")
 	return d.client
 }
-
-func (d DatabaseHelperImplementacion) CloseConnection()  {
-	childLogger.Debug().Msg("CloseConnection")
-	defer d.client.Close()
-}
-
 

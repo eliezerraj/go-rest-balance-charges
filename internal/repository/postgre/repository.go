@@ -59,7 +59,9 @@ func (w WorkerRepository) Add(ctx context.Context, balanceCharge core.BalanceCha
 	childLogger.Debug().Msg("Add")
 
 	_, root := xray.BeginSubsegment(ctx, "SQL.ADD-Balance-Charges")
-	defer root.Close(nil)
+	defer func() {
+		root.Close(nil)
+	}()
 
 	client := w.databaseHelper.GetConnection()
 
@@ -84,9 +86,8 @@ func (w WorkerRepository) Add(ctx context.Context, balanceCharge core.BalanceCha
 	if err != nil {
 		childLogger.Error().Err(err).Msg("Exec statement")
 		return nil, errors.New(err.Error())
-	}
+	} 
 	defer stmt.Close()
-
 	return &balanceCharge , nil
 }
 
@@ -94,7 +95,9 @@ func (w WorkerRepository) Get(ctx context.Context, balanceCharge core.BalanceCha
 	childLogger.Debug().Msg("Get")
 
 	_, root := xray.BeginSubsegment(ctx, "SQL.GET-Balance-Charges")
-	defer root.Close(nil)
+	defer func() {
+		root.Close(nil)
+	}()
 
 	client := w.databaseHelper.GetConnection()
 
@@ -104,7 +107,6 @@ func (w WorkerRepository) Get(ctx context.Context, balanceCharge core.BalanceCha
 		childLogger.Error().Err(err).Msg("Query statement")
 		return nil, errors.New(err.Error())
 	}
-	defer rows.Close()
 
 	for rows.Next() {
 		err := rows.Scan( 	&result_query.ID, 
@@ -121,7 +123,7 @@ func (w WorkerRepository) Get(ctx context.Context, balanceCharge core.BalanceCha
         }
 		return &result_query, nil
 	}
-
+	defer rows.Close()
 	return nil, erro.ErrNotFound
 }
 
@@ -129,7 +131,9 @@ func (w WorkerRepository) List(ctx context.Context, balanceCharge core.BalanceCh
 	childLogger.Debug().Msg("List")
 	
 	_, root := xray.BeginSubsegment(ctx, "SQL.List-Balance-Charges")
-	defer root.Close(nil)
+	defer func() {
+		root.Close(nil)
+	}()
 
 	client := w.databaseHelper.GetConnection()
 
@@ -141,7 +145,6 @@ func (w WorkerRepository) List(ctx context.Context, balanceCharge core.BalanceCh
 		childLogger.Error().Err(err).Msg("SELECT statement")
 		return nil, errors.New(err.Error())
 	}
-	defer rows.Close()
 
 	for rows.Next() {
 		err := rows.Scan( 	&result_query.ID, 
@@ -158,7 +161,7 @@ func (w WorkerRepository) List(ctx context.Context, balanceCharge core.BalanceCh
         }
 		balance_list = append(balance_list, result_query)
 	}
-
+	defer rows.Close()
 	return &balance_list , nil
 }
 
@@ -166,7 +169,9 @@ func (w WorkerRepository) AddCtx(ctx context.Context, tx *sql.Tx, balanceCharge 
 	childLogger.Debug().Msg("AddCtx")
 
 	_, root := xray.BeginSubsegment(ctx, "AddCtx.List-Balance-Charges")
-	defer root.Close(nil)
+	defer func() {
+		root.Close(nil)
+	}()
 
 	stmt, err := tx.Prepare(`INSERT INTO balance_charge ( 	fk_balance_id, 
 																type_charge,
@@ -179,7 +184,6 @@ func (w WorkerRepository) AddCtx(ctx context.Context, tx *sql.Tx, balanceCharge 
 		childLogger.Error().Err(err).Msg("INSERT statement")
 		return nil, errors.New(err.Error())
 	}
-	defer stmt.Close()
 
 	_, err = stmt.ExecContext(	ctx,
 								balanceCharge.FkBalanceID, 
@@ -193,5 +197,6 @@ func (w WorkerRepository) AddCtx(ctx context.Context, tx *sql.Tx, balanceCharge 
 		return nil, errors.New(err.Error())
 	}
 
+	defer stmt.Close()
 	return &balanceCharge , nil
 }
