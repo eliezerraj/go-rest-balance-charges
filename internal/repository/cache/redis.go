@@ -44,12 +44,12 @@ func (s *CacheService) Sum(ctx context.Context, key string, value interface{}) (
 		root.Close(nil)
 	}()
 
-	_, err := s.cache.HIncrByFloat(ctx, "account:" + key, "amount", value.(float64)).Result()
+	_, err := s.cache.HIncrByFloat(ctx, "credit:" + key, "amount", value.(float64)).Result()
 	if err != nil {
 		return err
 	}
 
-	s.cache.PExpire(ctx, "account:" + key, time.Minute * 1).Result()
+	s.cache.PExpire(ctx, "credit:" + key, time.Minute * 1).Result()
 
 	return nil
 }
@@ -62,7 +62,7 @@ func (s *CacheService) Get(ctx context.Context, key string) (interface{}, error)
 		root.Close(nil)
 	}()
 
-	res, err := s.cache.HGet(ctx, "account:"+ key, "amount").Result()
+	res, err := s.cache.HGet(ctx, "credit:"+ key, "amount").Result()
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (s *CacheService) Put(ctx context.Context, key string, value interface{}) e
 		root.Close(nil)
 	}()
 
-	status := s.cache.Set(ctx, "account:"+ key, value, time.Minute * 10)
+	status := s.cache.Set(ctx, "credit:"+ key, value, time.Minute * 10)
 	return status.Err()
 }
 
